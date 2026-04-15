@@ -1,37 +1,42 @@
 package ports
 
-// Diff holds the result of comparing two port snapshots.
+// Diff holds the result of comparing two port sets.
 type Diff struct {
-	Opened []PortState
-	Closed []PortState
+	Opened []int
+	Closed []int
 }
 
-// HasChanges returns true when at least one port was opened or closed.
-func (d Diff) HasChanges() bool {
-	return len(d.Opened) > 0 || len(d.Closed) > 0
+// IsEmpty returns true when no ports were opened or closed.
+func (d Diff) IsEmpty() bool {
+	return len(d.Opened) == 0 && len(d.Closed) == 0
 }
 
-// Compare calculates which ports were opened or closed between two snapshots.
-// previous and current are slices returned by Scanner.Scan().
-func Compare(previous, current []PortState) Diff {
-	prevSet := ToSet(previous)
-	currSet := ToSet(current)
+// Compare calculates which ports were opened and which were closed between
+// the previous and current port sets.
+func Compare(prev, curr Set) Diff {
+	var opened, closed []int
 
-	var diff Diff
-
-	// Ports present in current but not in previous → newly opened.
-	for port, state := range currSet {
-		if _, exists := prevSet[port]; !exists {
-			diff.Opened = append(diff.Opened, state)
+	for p := range curr {
+		if _, existed := prev[p]; !existed {
+			opened = append(opened, p)
+		}
+	}
+	for p := range prev {
+		if _, exists := curr[p]; !exists {
+			closed = append(closed, p)
 		}
 	}
 
-	// Ports present in previous but not in current → closed.
-	for port, state := range prevSet {
-		if _, exists := currSet[port]; !exists {
-			diff.Closed = append(diff.Closed, state)
+	sortInts(opened)
+	sortInts(closed)
+
+	return Diff{Opened: opened, Closed: closed}
+}
+
+func sortInts(s []int) {
+	for i := 1; i < len(s); i++ {
+		for j := i; j > 0 && s[j] < s[j-1]; j-- {
+			s[j], s[j-1] = s[j-1], s[j]
 		}
 	}
-
-	return diff
 }
