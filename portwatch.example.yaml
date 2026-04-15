@@ -1,0 +1,22 @@
+# portwatch example configuration
+# Copy to portwatch.yaml and adjust as needed.
+
+scan:
+  # Port range to monitor (inclusive).
+  port_start: 1
+  port_end: 65535
+
+  # How often to re-scan. Minimum 1s.
+  # Supports Go duration strings: 30s, 1m, 5m, etc.
+  interval: 30s
+
+notify:
+  # Optional: POST a JSON payload to this URL on port changes.
+  # Leave empty to disable webhook notifications.
+  webhook_url: ""
+
+  # Send a desktop notification (via libnotify / osascript) on changes.
+  desktop: true
+
+  # Application name shown in desktop notifications.
+  app_name: portwatch
