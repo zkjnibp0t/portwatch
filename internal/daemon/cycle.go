@@ -2,57 +2,51 @@ package daemon
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"path/filepath"
 
+	"github.com/user/portwatch/internal/alert"
+	"github.com/user/portwatch/internal/history"
 	"github.com/user/portwatch/internal/ports"
 )
 
-const snapshotFile = "portwatch_snapshot.json"
+// cycleHandler processes a single WatchEvent produced by a ports.Watcher.
+type cycleHandler struct {
+	manager *alert.Manager
+	store   *history.Store
+}
 
-// runCycle performs one scan-diff-alert cycle.
-// It loads the previous snapshot, scans current ports, computes the diff,
-// dispatches alerts, and persists the new snapshot.
-func (d *Daemon) runCycle(ctx context.Context) error {
-	snapshotPath := filepath.Join(d.cfg.StateDir, snapshotFile)
+newCycleHandler := func(m *alert.Manager, s *history.Store) *cycleHandler {
+	return &cycleHandler{manager: m, store: s}
+}
 
-	// Load previous snapshot (empty on first run).
-	prev, err := ports.LoadSnapshot(snapshotPath)
-	if err != nil {
-		return fmt.Errorf("load snapshot: %w", err)
+// handle processes one event: records history and dispatches alerts.
+func (h *cycleHandler) handle(ctx context.Context, ev ports.WatchEvent) {
+	if ev.Err != nil {
+		log.Printf("[portwatch] scan error: %v", ev.Err)
+		return
 	}
-
-	// Scan current open ports.
-	raw, err := d.scanner.Scan(ctx, d.cfg.PortRange)
-	if err != nil {
-		return fmt.Errorf("scan: %w", err)
+	if len(ev.Diff.Opened) == 0 && len(ev.Diff.Closed) == 0 {
+		return
 	}
-
-	// Apply include/exclude filters.
-	filtered := d.filter.Apply(raw)
-
-	// Resolve process info if available.
-	current := d.resolver.ResolveSet(filtered)
-
-	// Diff against previous state.
-	diff := ports.Compare(prev.ToSet(), current)
-
-	// Dispatch alert (throttling handled inside manager).
-	if alertErr := d.manager.Dispatch(ctx, diff); alertErr != nil {
-		log.Printf("[portwatch] alert dispatch error: %v", alertErr)
-	}
-
-	// Record to history store.
-	if err := d.store.Record(diff); err != nil {
+	if err := h.store.Record(ev.Diff); err != nil {
 		log.Printf("[portwatch] history record error: %v", err)
 	}
-
-	// Persist new snapshot.
-	newSnap := ports.NewSnapshot(current)
-	if err := ports.SaveSnapshot(snapshotPath, newSnap); err != nil {
-		return fmt.Errorf("save snapshot: %w", err)
+	if err := h.manager.Dispatch(ctx, ev.Diff); err != nil {
+		log.Printf("[portwatch] alert dispatch error: %v", err)
 	}
+}
 
-	return nil
+// runCycles drives the event loop, delegating each event to handle.
+func runCycles(ctx context.Context, ch <-chan ports.WatchEvent, h *cycleHandler) {
+	for {
+		select {
+		case ev, ok := <-ch:
+			if !ok {
+				return
+			}
+			h.handle(ctx, ev)
+		case <-ctx.Done():
+			return
+		}
+	}
 }
