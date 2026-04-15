@@ -10,86 +10,81 @@ func writeTempConfig(t *testing.T, content string) string {
 	t.Helper()
 	f, err := os.CreateTemp(t.TempDir(), "portwatch-*.yaml")
 	if err != nil {
-		t.Fatalf("creating temp file: %v", err)
+		t.Fatalf("failed to create temp file: %v", err)
 	}
 	if _, err := f.WriteString(content); err != nil {
-		t.Fatalf("writing temp file: %v", err)
+		t.Fatalf("failed to write temp config: %v", err)
 	}
 	f.Close()
 	return f.Name()
 }
 
 func TestLoadDefaults(t *testing.T) {
-	path := writeTempConfig(t, "{}\n")
-	cfg, err := Load(path)
+	cfg, err := Load("")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Scan.PortStart != 1 {
-		t.Errorf("expected default port_start 1, got %d", cfg.Scan.PortStart)
+	if cfg.Interval != 30*time.Second {
+		t.Errorf("expected default interval 30s, got %v", cfg.Interval)
 	}
-	if cfg.Scan.PortEnd != 65535 {
-		t.Errorf("expected default port_end 65535, got %d", cfg.Scan.PortEnd)
+	if cfg.AppName != "portwatch" {
+		t.Errorf("expected default app_name 'portwatch', got %q", cfg.AppName)
 	}
-	if cfg.Scan.Interval != 30*time.Second {
-		t.Errorf("expected default interval 30s, got %s", cfg.Scan.Interval)
-	}
-	if !cfg.Notify.Desktop {
-		t.Error("expected desktop notifications enabled by default")
-	}
-	if cfg.Notify.AppName != "portwatch" {
-		t.Errorf("expected default app_name 'portwatch', got %q", cfg.Notify.AppName)
+	if cfg.PortRange.Start != 1 || cfg.PortRange.End != 65535 {
+		t.Errorf("unexpected default port range: %d-%d", cfg.PortRange.Start, cfg.PortRange.End)
 	}
 }
 
 func TestLoadCustomValues(t *testing.T) {
-	content := `
-scan:
-  port_start: 1024
-  port_end: 9000
-  interval: 60s
-notify:
-  webhook_url: "https://example.com/hook"
-  desktop: false
-  app_name: "myapp"
-`
-	path := writeTempConfig(t, content)
+	path := writeTempConfig(t, `
+port_range:
+  start: 1024
+  end: 9000
+interval: 60s
+app_name: myapp
+webhook_url: https://example.com/hook
+filter:
+  include: [80, 443]
+  exclude: [8080]
+`)
 	cfg, err := Load(path)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Scan.PortStart != 1024 {
-		t.Errorf("expected port_start 1024, got %d", cfg.Scan.PortStart)
+	if cfg.PortRange.Start != 1024 {
+		t.Errorf("expected start 1024, got %d", cfg.PortRange.Start)
 	}
-	if cfg.Notify.WebhookURL != "https://example.com/hook" {
-		t.Errorf("unexpected webhook_url: %s", cfg.Notify.WebhookURL)
+	if cfg.AppName != "myapp" {
+		t.Errorf("expected app_name 'myapp', got %q", cfg.AppName)
 	}
-	if cfg.Notify.Desktop {
-		t.Error("expected desktop to be false")
+	if len(cfg.Filter.Include) != 2 {
+		t.Errorf("expected 2 include ports, got %d", len(cfg.Filter.Include))
+	}
+	if len(cfg.Filter.Exclude) != 1 || cfg.Filter.Exclude[0] != 8080 {
+		t.Errorf("expected exclude [8080], got %v", cfg.Filter.Exclude)
 	}
 }
 
 func TestLoadInvalidPortRange(t *testing.T) {
-	content := "scan:\n  port_start: 9000\n  port_end: 1024\n"
-	path := writeTempConfig(t, content)
+	path := writeTempConfig(t, "port_range:\n  start: 9000\n  end: 1000\n")
 	_, err := Load(path)
 	if err == nil {
-		t.Fatal("expected error for invalid port range, got nil")
+		t.Error("expected error for invalid port range")
 	}
 }
 
 func TestLoadIntervalTooShort(t *testing.T) {
-	content := "scan:\n  interval: 500ms\n"
-	path := writeTempConfig(t, content)
+	path := writeTempConfig(t, "interval: 1s\n")
 	_, err := Load(path)
 	if err == nil {
-		t.Fatal("expected error for interval < 1s, got nil")
+		t.Error("expected error for interval < 5s")
 	}
 }
 
-func TestLoadMissingFile(t *testing.T) {
-	_, err := Load("/nonexistent/path/portwatch.yaml")
+func TestLoadInvalidFilterPort(t *testing.T) {
+	path := writeTempConfig(t, "filter:\n  include: [0]\n")
+	_, err := Load(path)
 	if err == nil {
-		t.Fatal("expected error for missing file, got nil")
+		t.Error("expected error for out-of-range filter port 0")
 	}
 }
