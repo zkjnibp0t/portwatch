@@ -69,6 +69,21 @@ func (t *TrendTracker) Summary() []string {
 	return lines
 }
 
+// RecentEvents returns all recorded events for the given port within maxAge,
+// ordered from oldest to newest.
+func (t *TrendTracker) RecentEvents(port int) []TrendEntry {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.prune(time.Now())
+	var result []TrendEntry
+	for _, e := range t.entries {
+		if e.Port == port {
+			result = append(result, e)
+		}
+	}
+	return result
+}
+
 // prune removes entries older than maxAge. Caller must hold mu.
 func (t *TrendTracker) prune(now time.Time) {
 	cutoff := now.Add(-t.maxAge)
