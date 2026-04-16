@@ -13,17 +13,18 @@ func (d Diff) IsEmpty() bool {
 	return len(d.Opened) == 0 && len(d.Closed) == 0
 }
 
-// Compare returns the ports opened and closed between prev and curr.
-func Compare(prev, curr map[int]struct{}) Diff {
+// Compare returns ports that appeared in next but not prev (Opened)
+// and ports that were in prev but not next (Closed).
+func Compare(prev, next Set) Diff {
 	var opened, closed []int
 
-	for p := range curr {
-		if _, ok := prev[p]; !ok {
+	for p := range next {
+		if !prev[p] {
 			opened = append(opened, p)
 		}
 	}
 	for p := range prev {
-		if _, ok := curr[p]; !ok {
+		if !next[p] {
 			closed = append(closed, p)
 		}
 	}
