@@ -88,3 +88,10 @@ func TestLoadInvalidFilterPort(t *testing.T) {
 		t.Error("expected error for out-of-range filter port 0")
 	}
 }
+
+func TestLoadNonExistentFile(t *testing.T) {
+	_, err := Load("/nonexistent/path/portwatch.yaml")
+	if err == nil {
+		t.Error("expected error when loading non-existent config file")
+	}
+}
