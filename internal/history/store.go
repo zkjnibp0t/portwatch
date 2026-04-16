@@ -68,6 +68,24 @@ func (s *Store) Since(t time.Time) []Entry {
 	return out
 }
 
+// Prune removes entries older than the given duration and flushes to disk.
+func (s *Store) Prune(maxAge time.Duration) error {
+	cutoff := time.Now().UTC().Add(-maxAge)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	filtered := s.entries[:0]
+	for _, e := range s.entries {
+		if !e.Timestamp.Before(cutoff) {
+			filtered = append(filtered, e)
+		}
+	}
+	if len(filtered) == len(s.entries) {
+		return nil
+	}
+	s.entries = filtered
+	return s.flush()
+}
+
 func (s *Store) load() error {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
