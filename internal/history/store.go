@@ -55,6 +55,19 @@ func (s *Store) Entries() []Entry {
 	return out
 }
 
+// Since returns all entries recorded at or after the given time.
+func (s *Store) Since(t time.Time) []Entry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []Entry
+	for _, e := range s.entries {
+		if !e.Timestamp.Before(t) {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
 func (s *Store) load() error {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
