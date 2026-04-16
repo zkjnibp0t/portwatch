@@ -61,6 +61,16 @@ func (w *Whitelist) FilterDiff(diff Diff, lookup func(port int) string) Diff {
 	return Diff{Opened: filtered, Closed: diff.Closed}
 }
 
+// Len returns the number of entries in the whitelist.
+func (w *Whitelist) Len() int {
+	return len(w.entries)
+}
+
+// Add inserts a new entry into the whitelist at runtime.
+func (w *Whitelist) Add(e WhitelistEntry) {
+	w.entries[entryKey(e.Port, e.Process)] = struct{}{}
+}
+
 func entryKey(port int, process string) string {
 	return fmt.Sprintf("%d|%s", port, process)
 }
