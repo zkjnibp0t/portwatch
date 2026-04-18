@@ -37,6 +37,20 @@ func TestResolvePortWithHost(t *testing.T) {
 	}
 }
 
+func TestResolvePortMultipleHosts(t *testing.T) {
+	r := &Resolver{
+		lookup: func(addr string) ([]string, error) {
+			return []string{"first.local.", "second.local."}, nil
+		},
+	}
+
+	// Only the first hostname should be used
+	info := r.ResolvePort(80, "tcp")
+	if info.Host != "first.local." {
+		t.Errorf("expected host 'first.local.', got %s", info.Host)
+	}
+}
+
 func TestProcessInfoString(t *testing.T) {
 	p := ProcessInfo{Port: 80, Proto: "tcp", Address: "127.0.0.1:80", Host: "localhost."}
 	s := p.String()
@@ -80,6 +94,19 @@ func TestResolveSet(t *testing.T) {
 		if !seen[port] {
 			t.Errorf("port %d missing from results", port)
 		}
+	}
+}
+
+func TestResolveSetEmpty(t *testing.T) {
+	r := &Resolver{
+		lookup: func(addr string) ([]string, error) {
+			return nil, fmt.Errorf("no host")
+		},
+	}
+
+	results := r.ResolveSet(map[int]struct{}{}, "tcp")
+	if len(results) != 0 {
+		t.Errorf("expected 0 results, got %d", len(results))
 	}
 }
 
