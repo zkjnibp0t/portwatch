@@ -81,3 +81,17 @@ func (s *Suppressor) ActiveCount() int {
 	}
 	return count
 }
+
+// ActiveRules returns a snapshot of all non-expired rules.
+func (s *Suppressor) ActiveRules() []SuppressRule {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := s.now()
+	var active []SuppressRule
+	for _, r := range s.rules {
+		if now.Before(r.Until) {
+			active = append(active, r)
+		}
+	}
+	return active
+}
