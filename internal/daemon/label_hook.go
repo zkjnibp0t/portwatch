@@ -18,6 +18,7 @@ type LabelHook struct {
 }
 
 // NewLabelHook creates a LabelHook using the provided Labeler.
+// If out is nil, os.Stdout is used.
 func NewLabelHook(labeler *ports.Labeler, out io.Writer) *LabelHook {
 	if out == nil {
 		out = os.Stdout
@@ -25,10 +26,13 @@ func NewLabelHook(labeler *ports.Labeler, out io.Writer) *LabelHook {
 	return &LabelHook{
 		labeler: labeler,
 		logger:  log.New(out, "[label] ", 0),
+		out:     out,
 	}
 }
 
 // OnCycle is called after each scan cycle with the diff result.
+// It logs opened and closed ports with their human-readable labels.
+// If there are no changes, it returns early without logging.
 func (h *LabelHook) OnCycle(diff ports.Diff) {
 	if len(diff.Opened) == 0 && len(diff.Closed) == 0 {
 		return
@@ -39,6 +43,11 @@ func (h *LabelHook) OnCycle(diff ports.Diff) {
 	if len(diff.Closed) > 0 {
 		h.logger.Printf("closed: %s", h.labelList(diff.Closed))
 	}
+}
+
+// SetPrefix updates the log prefix used by the hook's logger.
+func (h *LabelHook) SetPrefix(prefix string) {
+	h.logger.SetPrefix(prefix)
 }
 
 func (h *LabelHook) labelList(portNums []int) string {
