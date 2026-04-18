@@ -54,3 +54,14 @@ func TestBuildTaggerMultipleEntries(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildTaggerFirstEntryWins(t *testing.T) {
+	// When multiple entries claim the same port, the first one should take precedence.
+	tagger := BuildTagger([]TagEntry{
+		{Name: "web", Ports: []int{80}},
+		{Name: "alt", Ports: []int{80}},
+	})
+	if got := tagger.Label(80); got != "web" {
+		t.Errorf("expected first entry to win, got %s", got)
+	}
+}
