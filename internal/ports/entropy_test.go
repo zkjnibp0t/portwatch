@@ -73,3 +73,14 @@ func TestEntropyZeroWindowSizeClamped(t *testing.T) {
 		t.Errorf("expected window clamped to 1, got %d", len(ec.history))
 	}
 }
+
+func TestEntropyUniformDistribution(t *testing.T) {
+	// Four equally frequent ports across one snapshot: entropy = log2(4) = 2.0
+	ec := NewEntropyCalculator(5)
+	ec.Record(makePortSet(80, 443, 8080, 8443))
+	got := ec.Entropy()
+	expected := math.Log2(4)
+	if math.Abs(got-expected) > 1e-9 {
+		t.Errorf("expected %f, got %f", expected, got)
+	}
+}
