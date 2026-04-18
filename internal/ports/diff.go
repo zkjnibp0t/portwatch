@@ -2,33 +2,30 @@ package ports
 
 import "sort"
 
-// Diff holds the result of comparing two port sets.
+// Diff holds the ports that appeared or disappeared between two scans.
 type Diff struct {
 	Opened []int
 	Closed []int
 }
 
-// IsEmpty returns true when no ports changed.
+// IsEmpty returns true when no changes are present.
 func (d Diff) IsEmpty() bool {
 	return len(d.Opened) == 0 && len(d.Closed) == 0
 }
 
-// Compare returns ports that appeared in next but not prev (Opened)
-// and ports that were in prev but not next (Closed).
-func Compare(prev, next Set) Diff {
+// Compare returns the Diff between a previous and current port set.
+func Compare(prev, curr Set) Diff {
 	var opened, closed []int
-
-	for p := range next {
+	for p := range curr {
 		if !prev[p] {
 			opened = append(opened, p)
 		}
 	}
 	for p := range prev {
-		if !next[p] {
+		if !curr[p] {
 			closed = append(closed, p)
 		}
 	}
-
 	sortInts(opened)
 	sortInts(closed)
 	return Diff{Opened: opened, Closed: closed}
