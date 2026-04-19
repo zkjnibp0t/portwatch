@@ -85,3 +85,12 @@ func TestAlertInvokesAllNotifiers(t *testing.T) {
 		t.Errorf("m2: expected 1 call, got %d", len(m2.calls))
 	}
 }
+
+func TestAlertNoNotifiers(t *testing.T) {
+	cfg := baseCfg()
+	d, _ := New(cfg)
+
+	// alert with no notifiers registered should not panic
+	diff := ports.Diff{Opened: []int{9090}, Closed: []int{}}
+	d.alert(diff)
+}
