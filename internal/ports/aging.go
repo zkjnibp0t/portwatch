@@ -75,3 +75,14 @@ func (a *AgingTracker) OlderThan(d time.Duration) []AgingEntry {
 	}
 	return result
 }
+
+// Snapshot returns a copy of all currently tracked aging entries.
+func (a *AgingTracker) Snapshot() []AgingEntry {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	result := make([]AgingEntry, 0, len(a.entries))
+	for _, e := range a.entries {
+		result = append(result, *e)
+	}
+	return result
+}
