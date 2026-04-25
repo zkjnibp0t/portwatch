@@ -58,6 +58,16 @@ func LookupProcess(pid int) ProcessInfo {
 	return info
 }
 
+// IsAlive reports whether the process with the given PID is still running by
+// checking for the existence of its /proc/<pid> directory.
+func IsAlive(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	_, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
+	return err == nil
+}
+
 // resolveUID returns the username for a UID string, falling back to the UID itself.
 func resolveUID(uid string) string {
 	// Avoid importing os/user to keep dependencies minimal; return raw UID.
