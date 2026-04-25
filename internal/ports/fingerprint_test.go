@@ -57,3 +57,14 @@ func TestFingerprintEqualSameSet(t *testing.T) {
 		t.Error("expected fingerprints to be equal")
 	}
 }
+
+// TestFingerprintDiffersOnPIDChange verifies that two port sets with the same
+// port numbers but different PIDs produce distinct fingerprints.
+func TestFingerprintDiffersOnPIDChange(t *testing.T) {
+	fp := NewFingerprinter()
+	a := fp.Compute([]ResolvedPort{{Port: 80, PID: 1}})
+	b := fp.Compute([]ResolvedPort{{Port: 80, PID: 2}})
+	if fp.Equal(a, b) {
+		t.Error("expected fingerprints to differ when PID changes")
+	}
+}
